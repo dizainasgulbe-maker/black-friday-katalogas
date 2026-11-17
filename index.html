@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="lt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Juodoji gulbė Black Friday</title>
+<style>
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+[hidden] { display: none !important; }
+img { max-width: 100%; }
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;600&display=swap">
+<style>
+/* Layout: one full-height stage holding a two-page book (single page on narrow screens), slim control bar below. Committed dark look to match the black-and-gold catalogue. */
+:root {
+  --ink: #050505;
+  --stage-a: #211f24;
+  --stage-b: #0a0a0b;
+  --gold: #d6ae5c;
+  --gold-dim: #7d6738;
+  --edge: rgba(255, 255, 255, .08);
+  --fg: #ece6d8;
+  --muted: #9b9482;
+  --font-ui: "Red Hat Display", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --flip: 900ms;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background-color: var(--stage-b);
+  background-image: radial-gradient(ellipse at 50% 42%, var(--stage-a), var(--stage-b) 72%);
+  color: var(--fg);
+  font: 400 14px/1.4 var(--font-ui);
+}
+.stage {
+  flex: 1 1 0;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  touch-action: pan-y pinch-zoom;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.book {
+  position: relative;
+  width: var(--bw, 0px);
+  height: var(--bh, 0px);
+  perspective: 2600px;
+  transition: transform var(--flip) cubic-bezier(.4, .1, .2, 1);
+}
+.book.single { perspective: 2200px; }
+.leaf {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 50%;
+  height: 100%;
+  transform-origin: left center;
+  transform-style: preserve-3d;
+  transition: transform var(--flip) cubic-bezier(.45, .05, .25, 1);
+}
+.leaf.flipped { transform: rotateY(-180deg); }
+.face {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--ink);
+  box-shadow: 0 0 0 1px var(--edge);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+.face.back { transform: rotateY(180deg); }
+.face.solo { -webkit-backface-visibility: visible; backface-visibility: visible; }
+.face img { display: block; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
+.face::after { content: ""; position: absolute; inset: 0; pointer-events: none; }
+.face.front::after { background: linear-gradient(to right, rgba(0,0,0,.5), rgba(0,0,0,0) 7%); }
+.face.back::after { background: linear-gradient(to left, rgba(0,0,0,.5), rgba(0,0,0,0) 7%); }
+.face.solo::after { background: none; }
+.spage {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  transition: transform .8s cubic-bezier(.45, .05, .25, 1), opacity .2s ease 0s;
+}
+.spage.gone {
+  transform: rotateY(-100deg);
+  opacity: 0;
+  transition: transform .8s cubic-bezier(.45, .05, .25, 1), opacity .35s ease .45s;
+}
+.hot {
+  position: absolute;
+  z-index: 2;
+  border-radius: 999px;
+  pointer-events: none;
+  cursor: pointer;
+  transition: box-shadow .2s ease;
+}
+.face.live .hot { pointer-events: auto; }
+.hot:hover, .hot:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--gold), 0 0 20px rgba(214, 174, 92, .55);
+}
+.bar {
+  flex: none;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+  padding-block: 8px 12px;
+}
+.bar .note { color: var(--muted); font-size: 13px; letter-spacing: .02em; min-width: 0; }
+.bar .controls { display: flex; align-items: center; gap: 14px; }
+.bar .right { display: flex; justify-content: flex-end; }
+.count { min-width: 6.5em; text-align: center; font-variant-numeric: tabular-nums; letter-spacing: .04em; color: var(--fg); }
+.btn {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--gold-dim);
+  background: rgba(255, 255, 255, .03);
+  color: var(--gold);
+  cursor: pointer;
+  transition: background-color .15s ease, border-color .15s ease, opacity .15s ease;
+}
+.btn:hover:not(:disabled) { background: rgba(214, 174, 92, .14); border-color: var(--gold); }
+.btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.btn:disabled { opacity: .3; cursor: default; }
+.btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+@media (max-width: 640px) {
+  .bar { grid-template-columns: 1fr; justify-items: center; }
+  .bar .note, .bar .right { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root { --flip: 10ms; }
+  .spage, .spage.gone { transition-duration: 10ms; transition-delay: 0s; }
+}
+</style>
+
+</head>
+<body>
+<main class="stage" id="stage" aria-label="Juodoji gulbė Black Friday katalogas">
+  <div class="book" id="book"></div>
+</main>
+<nav class="bar" aria-label="Katalogo puslapiai">
+  <div class="note">Black Friday · 2026 m. lapkričio 16–30 d.</div>
+  <div class="controls">
+    <button class="btn" id="prev" type="button" aria-label="Ankstesnis puslapis"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <div class="count" id="count" aria-live="polite">1 / 25</div>
+    <button class="btn" id="next" type="button" aria-label="Kitas puslapis"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+  </div>
+  <div class="right">
+    <button class="btn" id="full" type="button" aria-label="Visas ekranas" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+  </div>
+</nav>
+
+<script>
+(function () {
+  var N = 25, LEAVES = 13, MAXK = 12, RATIO = 1075 / 1521;
+  var HOT = {"2": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktoms-plytelems-15", "b": [35.097, 91.756, 33.801, 3.053]}, "3": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktoms-plytelems-15", "b": [33.045, 91.832, 33.801, 3.053]}, "4": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktoms-plytelems-15", "b": [32.073, 91.832, 33.693, 3.053]}, "5": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktoms-plytelems-15", "b": [33.153, 91.756, 33.693, 3.053]}, "6": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/laminuotoms-grindu-ir-sienu-dangoms-iki-23", "b": [33.153, 91.832, 33.801, 3.053]}, "7": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/grindjuostems-ir-ju-kampams-25", "b": [33.153, 91.832, 33.693, 3.053]}, "8": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/profiliams-ir-slenkstukams-20", "b": [34.881, 91.832, 33.801, 3.053]}, "9": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktoms-durims-iki-36", "b": [33.045, 91.832, 33.801, 3.053]}, "10": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktiems-dazams-iki-15", "b": [33.153, 91.832, 33.693, 3.053]}, "11": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/bituminems-mastikoms-fome-flex-30", "b": [33.153, 91.832, 33.801, 3.053]}, "12": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/pakabinamiems-klozetams-iki-39", "b": [32.937, 91.832, 33.693, 3.053]}, "13": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/vonios-baldams-ir-praustuvams-20", "b": [33.045, 91.679, 33.801, 3.053]}, "14": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/rubineta-maisytuvams-30", "b": [33.153, 91.832, 33.801, 3.053]}, "15": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/duso-stovams-ir-sistemoms-30", "b": [33.153, 91.832, 33.801, 3.053]}, "16": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/elektriniams-irankiams-ir-lazeriams-iki-37", "b": [33.153, 91.679, 33.801, 3.053]}, "17": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/rankiniams-irankiams-30", "b": [33.153, 91.832, 33.801, 3.053]}, "18": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/darbo-rubams-ir-avalynei-30", "b": [33.153, 91.832, 33.801, 3.053]}, "19": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/sodo-ir-svaros-prekems-iki-30", "b": [33.045, 91.832, 33.801, 3.053]}, "20": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/dexo-gipso-kartono-profiliams-iki-24", "b": [33.045, 91.832, 33.801, 3.053]}, "21": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/ilgikliams-ir-instaliaciniams-gaminiams-iki-30", "b": [33.153, 91.832, 33.801, 3.053]}, "22": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/automobiliu-prekems-30", "b": [33.153, 91.832, 33.693, 3.13]}, "23": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktiems-sviestuvams-ir-lemputems-iki-50", "b": [33.045, 91.832, 33.801, 3.053]}, "24": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktoms-statybinems-medziagoms-iki-16", "b": [33.045, 91.756, 33.801, 3.053]}};
+  var stage = document.getElementById('stage');
+  var book = document.getElementById('book');
+  var prevBtn = document.getElementById('prev');
+  var nextBtn = document.getElementById('next');
+  var fullBtn = document.getElementById('full');
+  var count = document.getElementById('count');
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var DUR = reduce ? 10 : 900;
+  var mode = null, pg = 1, lockUntil = 0, swipedAt = 0, bw = 0;
+  var leaves = [], spages = [];
+
+  function src(n) { return 'p-' + (n < 10 ? '0' : '') + n + '.jpg'; }
+
+  function makeFace(n, cls) {
+    var f = document.createElement('div');
+    f.className = 'face ' + cls;
+    if (n >= 1 && n <= N) {
+      var img = new Image();
+      img.src = src(n);
+      img.alt = 'Katalogo puslapis ' + n;
+      img.draggable = false;
+      f.appendChild(img);
+      var h = HOT[n];
+      if (h) {
+        var a = document.createElement('a');
+        a.className = 'hot';
+        a.href = h.u;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        a.title = 'Atraskite daugiau pasiūlymų';
+        a.setAttribute('aria-label', 'Atraskite daugiau pasiūlymų (puslapis ' + n + ')');
+        a.style.left = h.b[0] + '%';
+        a.style.top = h.b[1] + '%';
+        a.style.width = h.b[2] + '%';
+        a.style.height = h.b[3] + '%';
+        f.appendChild(a);
+      }
+    }
+    return f;
+  }
+
+  function kOf(p) { return Math.min(MAXK, Math.floor(p / 2)); }
+
+  function build(m) {
+    mode = m;
+    book.innerHTML = '';
+    book.className = 'book' + (m === 'single' ? ' single' : '');
+    leaves = []; spages = [];
+    var i, el;
+    if (m === 'double') {
+      for (i = 0; i < LEAVES; i++) {
+        el = document.createElement('div');
+        el.className = 'leaf';
+        el.appendChild(makeFace(2 * i + 1, 'front'));
+        el.appendChild(makeFace(2 * i + 2, 'back'));
+        book.appendChild(el);
+        leaves.push(el);
+      }
+    } else {
+      for (i = 1; i <= N; i++) {
+        el = document.createElement('div');
+        el.className = 'spage';
+        el.style.zIndex = N - i + 1;
+        el.appendChild(makeFace(i, 'front solo'));
+        book.appendChild(el);
+        spages.push(el);
+      }
+    }
+  }
+
+  function setLive() {
+    var all = book.querySelectorAll('.face.live'), i;
+    for (i = 0; i < all.length; i++) all[i].classList.remove('live');
+    if (mode === 'double') {
+      var k = kOf(pg);
+      if (k > 0) leaves[k - 1].children[1].classList.add('live');
+      if (k < LEAVES) leaves[k].children[0].classList.add('live');
+    } else {
+      spages[pg - 1].children[0].classList.add('live');
+    }
+  }
+
+  function flipLeaf(i, flip, delay) {
+    var el = leaves[i];
+    el.style.zIndex = 200 + i;
+    el.style.transitionDelay = delay + 'ms';
+    el.classList.toggle('flipped', flip);
+    clearTimeout(el._t);
+    el._t = setTimeout(function () {
+      el.style.transitionDelay = '';
+      el.style.zIndex = flip ? i + 1 : LEAVES - i;
+    }, delay + DUR + 80);
+  }
+
+  function apply(oldPg, animate) {
+    var i;
+    if (mode === 'double') {
+      var k = kOf(pg), ok = kOf(oldPg);
+      if (!animate) {
+        for (i = 0; i < LEAVES; i++) {
+          leaves[i].classList.toggle('flipped', i < k);
+          leaves[i].style.zIndex = i < k ? i + 1 : LEAVES - i;
+        }
+      } else if (k > ok) {
+        for (i = ok; i < k; i++) flipLeaf(i, true, (i - ok) * 110);
+      } else if (k < ok) {
+        for (i = ok - 1; i >= k; i--) flipLeaf(i, false, (ok - 1 - i) * 110);
+      }
+      var shift = k === 0 ? -bw / 4 : (k === MAXK ? bw / 4 : 0);
+      book.style.transform = 'translateX(' + Math.round(shift) + 'px)';
+      prevBtn.disabled = k === 0;
+      nextBtn.disabled = k === MAXK;
+      count.textContent = (k === 0 ? '1' : (2 * k) + '–' + (2 * k + 1)) + ' / ' + N;
+    } else {
+      book.style.transform = '';
+      for (i = 0; i < N; i++) spages[i].classList.toggle('gone', i + 1 < pg);
+      prevBtn.disabled = pg === 1;
+      nextBtn.disabled = pg === N;
+      count.textContent = pg + ' / ' + N;
+    }
+    setLive();
+  }
+
+  function go(p, animate) {
+    p = Math.max(1, Math.min(N, p));
+    if (p === pg) return;
+    var old = pg;
+    pg = p;
+    apply(old, animate !== false);
+  }
+
+  function step(dir) {
+    var now = Date.now();
+    if (now < lockUntil) return;
+    var target;
+    if (mode === 'double') {
+      var k = kOf(pg) + dir;
+      if (k < 0 || k > MAXK) return;
+      target = k === 0 ? 1 : 2 * k;
+    } else {
+      target = pg + dir;
+      if (target < 1 || target > N) return;
+    }
+    lockUntil = now + 450;
+    go(target, true);
+  }
+
+  function layout() {
+    var r = stage.getBoundingClientRect();
+    var aw = Math.max(0, r.width - 8), ah = Math.max(0, r.height - 8);
+    if (aw < 50 || ah < 50) return;
+    var m = aw / ah < 1.2 ? 'single' : 'double';
+    var pw, ph;
+    if (m === 'single') { pw = Math.min(aw, ah * RATIO); }
+    else { pw = Math.min(aw / 2, ah * RATIO); }
+    pw = Math.floor(pw); ph = Math.floor(pw / RATIO);
+    bw = m === 'single' ? pw : pw * 2;
+    book.style.setProperty('--bw', bw + 'px');
+    book.style.setProperty('--bh', ph + 'px');
+    if (m !== mode) {
+      var keep = pg;
+      build(m);
+      pg = 0;
+      pg = keep;
+      apply(keep, false);
+    } else if (mode === 'double') {
+      var k = kOf(pg);
+      var shift = k === 0 ? -bw / 4 : (k === MAXK ? bw / 4 : 0);
+      book.style.transform = 'translateX(' + Math.round(shift) + 'px)';
+    }
+  }
+
+  prevBtn.addEventListener('click', function () { step(-1); });
+  nextBtn.addEventListener('click', function () { step(1); });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); step(1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); step(-1); }
+    else if (e.key === 'Home') { e.preventDefault(); lockUntil = 0; go(1, true); }
+    else if (e.key === 'End') { e.preventDefault(); lockUntil = 0; go(N, true); }
+  });
+
+  stage.addEventListener('click', function (e) {
+    if (e.target.closest && e.target.closest('a')) return;
+    if (Date.now() - swipedAt < 350) return;
+    var r = book.getBoundingClientRect();
+    if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
+    if (mode === 'double') {
+      var k = kOf(pg);
+      if (k === 0) { step(1); return; }
+      step(e.clientX < r.left + r.width / 2 ? -1 : 1);
+    } else {
+      step(e.clientX < r.left + r.width * 0.3 ? -1 : 1);
+    }
+  });
+
+  var sx = 0, sy = 0, down = false;
+  stage.addEventListener('pointerdown', function (e) { down = true; sx = e.clientX; sy = e.clientY; });
+  stage.addEventListener('pointerup', function (e) {
+    if (!down) return;
+    down = false;
+    var dx = e.clientX - sx, dy = e.clientY - sy;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      swipedAt = Date.now();
+      step(dx < 0 ? 1 : -1);
+    }
+  });
+  stage.addEventListener('pointercancel', function () { down = false; });
+
+  if (document.fullscreenEnabled) {
+    fullBtn.hidden = false;
+    fullBtn.addEventListener('click', function () {
+      try {
+        var p = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+        if (p && p.catch) p.catch(function () {});
+      } catch (err) {}
+    });
+  }
+
+  var pending = false;
+  function schedule() {
+    if (pending) return;
+    pending = true;
+    requestAnimationFrame(function () { pending = false; layout(); });
+  }
+  if (window.ResizeObserver) new ResizeObserver(schedule).observe(stage);
+  window.addEventListener('resize', schedule);
+  schedule();
+})();
+</script>
+</body>
+</html>
