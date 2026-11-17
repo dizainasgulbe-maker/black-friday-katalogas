@@ -157,7 +157,6 @@
       mv.name = 'viewport'; mv.content = 'width=device-width, initial-scale=1, viewport-fit=cover';
       document.head.appendChild(mv);
     }
-    try { root.focus({ preventScroll: true }); } catch (err) {}
   }
   var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
