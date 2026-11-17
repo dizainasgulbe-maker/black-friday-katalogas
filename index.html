@@ -40,24 +40,15 @@ body {
   min-height: 0;
   display: grid;
   place-items: center;
-  overflow: hidden;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
-}
-.zoom-wrap {
-  display: grid;
-  place-items: center;
-  transform-origin: center center;
-  will-change: transform;
 }
 .book {
   position: relative;
   transition: transform var(--shift) cubic-bezier(.4, .1, .2, 1);
 }
 .book canvas { display: block; cursor: pointer; }
-.stage.is-zoomed .book canvas { cursor: grab; }
-.stage.is-zoomed.is-panning .book canvas { cursor: grabbing; }
 .links { position: absolute; inset: 0; pointer-events: none; }
 .hot {
   position: absolute;
@@ -77,12 +68,13 @@ body {
   align-items: center;
   gap: 12px;
   padding-block: 8px 12px;
-  position: relative;
-  z-index: 2;
 }
 .bar .note { color: var(--muted); font-size: 13px; letter-spacing: .02em; min-width: 0; }
 .bar .controls { display: flex; align-items: center; gap: 14px; }
-.bar .right { display: flex; justify-content: flex-end; align-items: center; gap: 10px; }
+.zoom-controls { display: flex; align-items: center; gap: 8px; }
+.zoom-controls .btn { width: 38px; height: 38px; }
+.zoom-level { min-width: 4.5em; text-align: center; font-variant-numeric: tabular-nums; color: var(--muted); font-size: 12px; }
+.bar .right { display: flex; justify-content: flex-end; }
 .count { min-width: 6.5em; text-align: center; font-variant-numeric: tabular-nums; letter-spacing: .04em; color: var(--fg); }
 .btn {
   width: 44px;
@@ -102,8 +94,8 @@ body {
 .btn:disabled { opacity: .3; cursor: default; }
 .btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 @media (max-width: 640px) {
-  .bar { grid-template-columns: 1fr auto; }
-  .bar .note, #full { display: none; }
+  .bar { grid-template-columns: 1fr; justify-items: center; }
+  .bar .note, .bar .right { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { :root { --shift: 10ms; } }
 </style>
@@ -111,11 +103,9 @@ body {
 </head>
 <body>
 <main class="stage" id="stage" aria-label="Juodoji gulbė Black Friday katalogas">
-  <div class="zoom-wrap" id="zoomWrap">
-    <div class="book" id="book">
-      <canvas id="cv" role="img" aria-label="Katalogo puslapiai. Spauskite arba tempkite puslapio kampą, kad pervertumėte."></canvas>
-      <div class="links" id="links"></div>
-    </div>
+  <div class="book" id="book">
+    <canvas id="cv" role="img" aria-label="Katalogo puslapiai. Spauskite arba tempkite puslapio kampą, kad pervertumėte."></canvas>
+    <div class="links" id="links"></div>
   </div>
 </main>
 <nav class="bar" aria-label="Katalogo puslapiai">
@@ -124,10 +114,14 @@ body {
     <button class="btn" id="prev" type="button" aria-label="Ankstesnis puslapis"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
     <div class="count" id="count" aria-live="polite">1 / 25</div>
     <button class="btn" id="next" type="button" aria-label="Kitas puslapis"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+    <div class="zoom-controls" aria-label="Mastelio valdymas">
+      <button class="btn" id="zoomOut" type="button" aria-label="Mažinti mastelį">−</button>
+      <div class="zoom-level" id="zoomLevel" aria-live="polite">100%</div>
+      <button class="btn" id="zoomIn" type="button" aria-label="Didinti mastelį">+</button>
+      <button class="btn" id="zoomReset" type="button" aria-label="Atstatyti mastelį">↺</button>
+    </div>
   </div>
   <div class="right">
-    <button class="btn" id="zoomOut" type="button" aria-label="Tolinti" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35M8 11h6"/></svg></button>
-    <button class="btn" id="zoomIn" type="button" aria-label="Priartinti"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35M11 8v6M8 11h6"/></svg></button>
     <button class="btn" id="full" type="button" aria-label="Visas ekranas" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
   </div>
 </nav>
@@ -138,28 +132,25 @@ body {
   var HOT = {"2": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktoms-plytelems-15", "b": [35.097, 91.756, 33.801, 3.053]}, "3": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktoms-plytelems-15", "b": [33.045, 91.832, 33.801, 3.053]}, "4": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktoms-plytelems-15", "b": [32.073, 91.832, 33.693, 3.053]}, "5": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktoms-plytelems-15", "b": [33.153, 91.756, 33.693, 3.053]}, "6": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/laminuotoms-grindu-ir-sienu-dangoms-iki-23", "b": [33.153, 91.832, 33.801, 3.053]}, "7": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/grindjuostems-ir-ju-kampams-25", "b": [33.153, 91.832, 33.693, 3.053]}, "8": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/profiliams-ir-slenkstukams-20", "b": [34.881, 91.832, 33.801, 3.053]}, "9": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktoms-durims-iki-36", "b": [33.045, 91.832, 33.801, 3.053]}, "10": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktiems-dazams-iki-15", "b": [33.153, 91.832, 33.693, 3.053]}, "11": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/bituminems-mastikoms-fome-flex-30", "b": [33.153, 91.832, 33.801, 3.053]}, "12": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/pakabinamiems-klozetams-iki-39", "b": [32.937, 91.832, 33.693, 3.053]}, "13": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/vonios-baldams-ir-praustuvams-20", "b": [33.045, 91.679, 33.801, 3.053]}, "14": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/rubineta-maisytuvams-30", "b": [33.153, 91.832, 33.801, 3.053]}, "15": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/duso-stovams-ir-sistemoms-30", "b": [33.153, 91.832, 33.801, 3.053]}, "16": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/elektriniams-irankiams-ir-lazeriams-iki-37", "b": [33.153, 91.679, 33.801, 3.053]}, "17": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/rankiniams-irankiams-30", "b": [33.153, 91.832, 33.801, 3.053]}, "18": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/darbo-rubams-ir-avalynei-30", "b": [33.153, 91.832, 33.801, 3.053]}, "19": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/sodo-ir-svaros-prekems-iki-30", "b": [33.045, 91.832, 33.801, 3.053]}, "20": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/dexo-gipso-kartono-profiliams-iki-24", "b": [33.045, 91.832, 33.801, 3.053]}, "21": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/ilgikliams-ir-instaliaciniams-gaminiams-iki-30", "b": [33.153, 91.832, 33.801, 3.053]}, "22": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/automobiliu-prekems-30", "b": [33.153, 91.832, 33.693, 3.13]}, "23": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktiems-sviestuvams-ir-lemputems-iki-50", "b": [33.045, 91.832, 33.801, 3.053]}, "24": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktoms-statybinems-medziagoms-iki-16", "b": [33.045, 91.756, 33.801, 3.053]}};
   var PREFIX = '';
   var stage = document.getElementById('stage');
-  var zoomWrap = document.getElementById('zoomWrap');
   var book = document.getElementById('book');
   var cv = document.getElementById('cv');
   var links = document.getElementById('links');
   var prevBtn = document.getElementById('prev');
   var nextBtn = document.getElementById('next');
+  var fullBtn = document.getElementById('full');
   var zoomOutBtn = document.getElementById('zoomOut');
   var zoomInBtn = document.getElementById('zoomIn');
-  var fullBtn = document.getElementById('full');
+  var zoomResetBtn = document.getElementById('zoomReset');
+  var zoomLevel = document.getElementById('zoomLevel');
   var count = document.getElementById('count');
   var ctx = cv.getContext('2d');
   var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   var mode = null, cur = 0, maxJ = 12, pw = 0, H = 0, W = 0, sx = 0, dpr = 1;
-  var turn = null, anim = null, dragging = null, swipe = null, hoverZone = null;
+  var zoom = 1, panX = 0, panY = 0;
+  var turn = null, anim = null, dragging = null, swipe = null, pan = null, hoverZone = null;
   var introTimer = 0, introDone = false, lastDragAt = 0, rafId = 0;
   var imgs = [];
-
-  /* zoom & pan state */
-  var MIN_Z = 1, MAX_Z = 3.2;
-  var zoom = 1, panX = 0, panY = 0, shiftPx = 0;
-  var panning = null, pinch = null, zoomTimer = 0;
 
   function src(n) { return PREFIX + 'p-' + (n < 10 ? '0' : '') + n + '.jpg'; }
   for (var i = 1; i <= N; i++) {
@@ -325,79 +316,6 @@ body {
   }
   function req() { if (!rafId) rafId = requestAnimationFrame(draw); }
 
-  /* zoom & pan helpers */
-  function isZoomed() { return zoom > 1.005; }
-
-  function updateCanvasResolution() {
-    if (!W || !H) return;
-    var baseDpr = Math.min(2, window.devicePixelRatio || 1);
-    var targetDpr = Math.min(4, baseDpr * Math.max(1, zoom));
-    if (Math.abs(targetDpr - dpr) > 0.05) {
-      dpr = targetDpr;
-      cv.width = Math.round(W * dpr);
-      cv.height = Math.round(H * dpr);
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
-      draw();
-    }
-  }
-
-  function scheduleSharpRender() {
-    clearTimeout(zoomTimer);
-    zoomTimer = setTimeout(updateCanvasResolution, 140);
-  }
-
-  function clampPan() {
-    if (!isZoomed()) { panX = 0; panY = 0; return; }
-    var sr = stage.getBoundingClientRect();
-    var visibleW = (mode === 'double' && shiftPx !== 0) ? pw : W;
-    var scaledW = visibleW * zoom;
-    var scaledH = H * zoom;
-    var maxX = Math.max(0, (scaledW - sr.width) / 2 + 24);
-    var maxY = Math.max(0, (scaledH - sr.height) / 2 + 24);
-    var offsetCenter = shiftPx * zoom;
-    panX = Math.max(-maxX - offsetCenter, Math.min(maxX - offsetCenter, panX));
-    panY = Math.max(-maxY, Math.min(maxY, panY));
-  }
-
-  function applyZoomTransform(smoothAnim) {
-    clampPan();
-    zoomWrap.style.transition = (smoothAnim && !reduce) ? 'transform 220ms cubic-bezier(.2, .8, .2, 1)' : 'none';
-    zoomWrap.style.transform = isZoomed()
-      ? 'translate3d(' + panX.toFixed(1) + 'px, ' + panY.toFixed(1) + 'px, 0) scale(' + zoom.toFixed(4) + ')'
-      : '';
-    stage.classList.toggle('is-zoomed', isZoomed());
-    zoomOutBtn.disabled = zoom <= MIN_Z + 0.01;
-    zoomInBtn.disabled = zoom >= MAX_Z - 0.01;
-    scheduleSharpRender();
-  }
-
-  function setZoom(newZ, cx, cy, smoothAnim) {
-    stopIntro();
-    if (turn && !isBusy()) { cancelAnim(); turn = null; hoverZone = null; draw(); }
-    var prevZ = zoom;
-    zoom = Math.max(MIN_Z, Math.min(MAX_Z, newZ));
-    if (zoom < 1.03) zoom = 1;
-
-    if (zoom === 1) {
-      panX = 0;
-      panY = 0;
-    } else if (cx !== undefined && cy !== undefined) {
-      var sr = stage.getBoundingClientRect();
-      var ox = cx - (sr.left + sr.width / 2);
-      var oy = cy - (sr.top + sr.height / 2);
-      var ratio = zoom / prevZ;
-      panX = ox - (ox - panX) * ratio;
-      panY = oy - (oy - panY) * ratio;
-    }
-    applyZoomTransform(smoothAnim);
-  }
-
-  function resetZoom(smoothAnim) {
-    if (!isZoomed()) return;
-    setZoom(1, undefined, undefined, smoothAnim);
-  }
-
   /* animation */
   function ease(p) { return -(Math.cos(PI * p) - 1) / 2; }
   function easeOut(p) { return 1 - Math.pow(1 - p, 3); }
@@ -421,9 +339,29 @@ body {
   function setShift(t) {
     var s = 0;
     if (mode === 'double') s = t === 0 ? -pw / 2 : (t === maxJ && 2 * maxJ + 1 > N ? pw / 2 : 0);
-    shiftPx = Math.round(s);
-    book.style.transform = 'translateX(' + shiftPx + 'px)';
-    if (isZoomed()) applyZoomTransform(false);
+    book.style.transform = 'translate(' + Math.round(s + panX) + 'px, ' + Math.round(panY) + 'px) scale(' + zoom + ')';
+  }
+
+  function updateZoomUI() {
+    zoomLevel.textContent = Math.round(zoom * 100) + '%';
+    zoomOutBtn.disabled = zoom <= 1.001;
+    zoomInBtn.disabled = zoom >= 3;
+    zoomResetBtn.disabled = zoom <= 1.001 && panX === 0 && panY === 0;
+  }
+
+  function setZoom(next) {
+    next = Math.max(1, Math.min(3, next));
+    if (next === zoom) return;
+    zoom = next;
+    if (zoom === 1) { panX = 0; panY = 0; }
+    setShift(turn ? (turn.theta > PI / 2 ? turn.j + 1 : turn.j) : cur);
+    updateZoomUI();
+  }
+
+  function resetZoom() {
+    zoom = 1; panX = 0; panY = 0;
+    setShift(turn ? (turn.theta > PI / 2 ? turn.j + 1 : turn.j) : cur);
+    updateZoomUI();
   }
 
   function buildLinks() {
@@ -468,7 +406,6 @@ body {
     if (isBusy()) return;
     var target = cur + dir;
     if (target < 0 || target > maxJ) return;
-    if (isZoomed()) resetZoom(true);
     stopIntro();
     var j = dir > 0 ? cur : cur - 1, rest = dir > 0 ? 0 : PI, end = dir > 0 ? PI : 0;
     if (!turn || turn.j !== j) turn = { j: j, theta: rest, rest: rest };
@@ -479,14 +416,13 @@ body {
   }
 
   function jump(target) {
-    if (isZoomed()) resetZoom(false);
     stopIntro(); cancelAnim(); dragging = null; turn = null;
     cur = Math.max(0, Math.min(maxJ, target));
     setShift(cur); draw(); ui();
   }
 
   function startPeek(z) {
-    if (isBusy() || isZoomed()) return;
+    if (isBusy()) return;
     var j = z === 'R' ? cur : cur - 1, rest = z === 'R' ? 0 : PI;
     if (!turn || turn.j !== j) turn = { j: j, theta: rest, rest: rest };
     animTheta(rest === 0 ? PEEK : PI - PEEK, 420, null, false);
@@ -496,15 +432,12 @@ body {
     animTheta(turn.rest, 360, function () { turn = null; draw(); }, false);
   }
 
-  /* pointer & touch helpers */
-  var activePointers = new Map();
-
+  /* pointer helpers */
   function bookPos(e) {
     var r = cv.getBoundingClientRect();
     return { x: (e.clientX - r.left) / zoom, y: (e.clientY - r.top) / zoom };
   }
   function zoneAt(p) {
-    if (isZoomed()) return null;
     var wz = pw * 0.24, hz = H * 0.2;
     if (p.y < H - hz || p.y > H + 12) return null;
     if (cur < maxJ && p.x >= sx + pw - wz && p.x <= sx + pw + 8) return 'R';
@@ -516,43 +449,10 @@ body {
     return Math.max(0.001, Math.min(PI - 0.001, a));
   }
 
-  function pinchInfo() {
-    var pts = Array.from(activePointers.values());
-    var dx = pts[1].x - pts[0].x, dy = pts[1].y - pts[0].y;
-    return {
-      dist: Math.hypot(dx, dy),
-      cx: (pts[0].x + pts[1].x) / 2,
-      cy: (pts[0].y + pts[1].y) / 2
-    };
-  }
-
   stage.addEventListener('pointerdown', function (e) {
     if (e.button && e.button !== 0) return;
     stopIntro();
-    activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-
-    if (activePointers.size === 2) {
-      dragging = null;
-      swipe = null;
-      panning = null;
-      stage.classList.remove('is-panning');
-      var info = pinchInfo();
-      pinch = { dist: Math.max(10, info.dist), zoom: zoom, cx: info.cx, cy: info.cy };
-      try { stage.setPointerCapture(e.pointerId); } catch (err) {}
-      e.preventDefault();
-      return;
-    }
-
     if (e.target.closest && e.target.closest('a')) return;
-
-    if (isZoomed()) {
-      panning = { x: e.clientX, y: e.clientY, startPanX: panX, startPanY: panY, moved: false };
-      stage.classList.add('is-panning');
-      try { stage.setPointerCapture(e.pointerId); } catch (err) {}
-      e.preventDefault();
-      return;
-    }
-
     var p = bookPos(e), z = (anim && anim.full) ? null : zoneAt(p);
     if (z) {
       cancelAnim();
@@ -563,37 +463,17 @@ body {
       stage.style.cursor = 'grabbing';
       try { stage.setPointerCapture(e.pointerId); } catch (err) {}
       e.preventDefault();
+    } else if (zoom > 1) {
+      pan = { x: e.clientX, y: e.clientY, startX: panX, startY: panY, moved: false };
+      stage.style.cursor = 'grabbing';
+      try { stage.setPointerCapture(e.pointerId); } catch (err) {}
+      e.preventDefault();
     } else {
       swipe = { x: e.clientX, y: e.clientY };
     }
   });
 
   stage.addEventListener('pointermove', function (e) {
-    if (activePointers.has(e.pointerId)) {
-      activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    }
-
-    if (pinch && activePointers.size >= 2) {
-      var info = pinchInfo();
-      var nextZ = pinch.zoom * (info.dist / pinch.dist);
-      setZoom(nextZ, info.cx, info.cy, false);
-      panX += info.cx - pinch.cx;
-      panY += info.cy - pinch.cy;
-      pinch.cx = info.cx;
-      pinch.cy = info.cy;
-      applyZoomTransform(false);
-      return;
-    }
-
-    if (panning) {
-      var dx = e.clientX - panning.x, dy = e.clientY - panning.y;
-      if (Math.abs(dx) + Math.abs(dy) > 4) panning.moved = true;
-      panX = panning.startPanX + dx;
-      panY = panning.startPanY + dy;
-      applyZoomTransform(false);
-      return;
-    }
-
     var p = bookPos(e);
     if (dragging) {
       if (Math.abs(e.clientX - dragging.x) + Math.abs(e.clientY - dragging.y) > 6) {
@@ -603,9 +483,153 @@ body {
       if (dragging.moved) { turn.theta = angleAt(p); draw(); }
       return;
     }
-    if (e.pointerType !== 'mouse' || (anim && anim.full) || isZoomed()) return;
+    if (pan) {
+      var dx = e.clientX - pan.x, dy = e.clientY - pan.y;
+      if (Math.abs(dx) + Math.abs(dy) > 3) pan.moved = true;
+      panX = pan.startX + dx;
+      panY = pan.startY + dy;
+      setShift(turn ? (turn.theta > PI / 2 ? turn.j + 1 : turn.j) : cur);
+      return;
+    }
+    if (e.pointerType !== 'mouse' || (anim && anim.full)) return;
     var z = zoneAt(p);
     if (z !== hoverZone) {
       hoverZone = z;
       stopIntro();
-      stage.style.
+      stage.style.cursor = z ? 'grab' : '';
+      if (z) startPeek(z); else endPeek();
+    }
+  });
+
+  function finishDrag(cancelled) {
+    var d = dragging;
+    if (!d) return;
+    dragging = null;
+    stage.style.cursor = '';
+    lastDragAt = Date.now();
+    if (!d.moved) {
+      turn = null; draw();
+      if (!cancelled) step(d.z === 'R' ? 1 : -1);
+      return;
+    }
+    var fwd = d.z === 'R', th = turn.theta;
+    var complete = fwd ? th > 1.1 : th < PI - 1.1;
+    var target = complete ? (fwd ? cur + 1 : cur - 1) : cur;
+    var end = complete ? (fwd ? PI : 0) : turn.rest;
+    setShift(target);
+    var dur = 250 + 650 * Math.abs(end - th) / PI;
+    animTheta(end, dur, function () { if (complete) commit(target); else { turn = null; hoverZone = null; draw(); ui(); } }, true);
+  }
+  stage.addEventListener('pointerup', function (e) {
+    if (dragging) { finishDrag(false); return; }
+    if (pan) {
+      stage.style.cursor = '';
+      pan = null;
+      return;
+    }
+    if (swipe) {
+      var dx = e.clientX - swipe.x, dy = e.clientY - swipe.y;
+      swipe = null;
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) { lastDragAt = Date.now(); step(dx < 0 ? 1 : -1); }
+    }
+  });
+  stage.addEventListener('pointercancel', function () { swipe = null; pan = null; stage.style.cursor = ''; finishDrag(true); });
+  stage.addEventListener('pointerleave', function () {
+    if (hoverZone && !dragging) { hoverZone = null; stage.style.cursor = ''; endPeek(); }
+  });
+
+  stage.addEventListener('click', function (e) {
+    if (e.target.closest && e.target.closest('a')) return;
+    if (zoom > 1) return;
+    if (Date.now() - lastDragAt < 400) return;
+    var r = cv.getBoundingClientRect();
+    if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
+    if (mode === 'double') step(e.clientX < r.left + r.width / 2 ? -1 : 1);
+    else step(e.clientX < r.left + r.width * 0.3 ? -1 : 1);
+  });
+
+  prevBtn.addEventListener('click', function () { step(-1); });
+  nextBtn.addEventListener('click', function () { step(1); });
+  zoomOutBtn.addEventListener('click', function () { setZoom(zoom - 0.25); });
+  zoomInBtn.addEventListener('click', function () { setZoom(zoom + 0.25); });
+  zoomResetBtn.addEventListener('click', resetZoom);
+  stage.addEventListener('wheel', function (e) {
+    if (e.target.closest && e.target.closest('a')) return;
+    e.preventDefault();
+    setZoom(zoom + (e.deltaY < 0 ? 0.25 : -0.25));
+  }, { passive: false });
+  document.addEventListener('keydown', function (e) {
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); step(1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); step(-1); }
+    else if (e.key === 'Home') { e.preventDefault(); jump(0); }
+    else if (e.key === 'End') { e.preventDefault(); jump(maxJ); }
+  });
+
+  if (document.fullscreenEnabled) {
+    fullBtn.hidden = false;
+    fullBtn.addEventListener('click', function () {
+      try {
+        var pr = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+        if (pr && pr.catch) pr.catch(function () {});
+      } catch (err) {}
+    });
+  }
+
+  /* opening peek: the cover corner lifts once, then settles */
+  function intro() {
+    introTimer = 0;
+    if (introDone || reduce || mode !== 'double' || cur !== 0 || turn || isBusy()) return;
+    introDone = true;
+    turn = { j: 0, theta: 0, rest: 0 };
+    animTheta(0.62, 800, function () {
+      introTimer = setTimeout(function () {
+        introTimer = 0;
+        if (turn && turn.j === 0 && !isBusy() && !hoverZone) animTheta(0, 650, function () { turn = null; draw(); }, false);
+      }, 450);
+    }, false);
+  }
+
+  function layout() {
+    var r = stage.getBoundingClientRect();
+    var aw = Math.max(0, r.width - 8), ah = Math.max(0, r.height - 8);
+    if (aw < 50 || ah < 50) return;
+    var m = aw / ah < 1.2 ? 'single' : 'double';
+    var p = m === 'single' ? Math.min(aw, ah * RATIO) : Math.min(aw / 2, ah * RATIO);
+    pw = Math.floor(p); H = Math.floor(pw / RATIO);
+    W = m === 'single' ? pw : pw * 2;
+    sx = m === 'single' ? 0 : pw;
+    dpr = Math.min(2, window.devicePixelRatio || 1);
+    if (m !== mode) {
+      var pageNo = mode === null ? 1 : (mode === 'double' ? Math.min(N, 2 * cur + 1) : cur + 1);
+      cancelAnim(); turn = null; dragging = null; hoverZone = null;
+      mode = m;
+      maxJ = m === 'double' ? 12 : N - 1;
+      cur = m === 'double' ? Math.min(12, Math.floor(pageNo / 2)) : pageNo - 1;
+    }
+    book.style.width = W + 'px';
+    book.style.height = H + 'px';
+    cv.width = Math.round(W * dpr);
+    cv.height = Math.round(H * dpr);
+    cv.style.width = W + 'px';
+    cv.style.height = H + 'px';
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    setShift(turn ? (turn.theta > PI / 2 ? turn.j + 1 : turn.j) : cur);
+    draw(); ui(); updateZoomUI();
+    if (!introDone && !introTimer && mode === 'double') introTimer = setTimeout(intro, 1100);
+  }
+
+  var pending = false;
+  function schedule() {
+    if (pending) return;
+    pending = true;
+    requestAnimationFrame(function () { pending = false; layout(); });
+  }
+  if (window.ResizeObserver) new ResizeObserver(schedule).observe(stage);
+  window.addEventListener('resize', schedule);
+  schedule();
+})();
+</script>
+</body>
+</html>
