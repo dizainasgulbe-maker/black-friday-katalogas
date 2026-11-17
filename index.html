@@ -119,7 +119,7 @@ body {
 
 <script>
 (function () {
-  var N = 25, RATIO = 1075 / 1521, PI = Math.PI, PEEK = 0.3, OFF = 4000, LIFT = 0.6;
+  var N = 25, RATIO = 1075 / 1521, PI = Math.PI, PEEK = 0.3, OFF = 4000, LIFT = 0.6, SPINE_A = 0.4, SPINE_W = 0.065;
   var HOT = {"2": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktoms-plytelems-15", "b": [35.097, 91.756, 33.801, 3.053]}, "3": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktoms-plytelems-15", "b": [33.045, 91.832, 33.801, 3.053]}, "4": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktoms-plytelems-15", "b": [32.073, 91.832, 33.693, 3.053]}, "5": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktoms-plytelems-15", "b": [33.153, 91.756, 33.693, 3.053]}, "6": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/laminuotoms-grindu-ir-sienu-dangoms-iki-23", "b": [33.153, 91.832, 33.801, 3.053]}, "7": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/grindjuostems-ir-ju-kampams-25", "b": [33.153, 91.832, 33.693, 3.053]}, "8": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/profiliams-ir-slenkstukams-20", "b": [34.881, 91.832, 33.801, 3.053]}, "9": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktoms-durims-iki-36", "b": [33.045, 91.832, 33.801, 3.053]}, "10": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktiems-dazams-iki-15", "b": [33.153, 91.832, 33.693, 3.053]}, "11": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/bituminems-mastikoms-fome-flex-30", "b": [33.153, 91.832, 33.801, 3.053]}, "12": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/pakabinamiems-klozetams-iki-39", "b": [32.937, 91.832, 33.693, 3.053]}, "13": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/vonios-baldams-ir-praustuvams-20", "b": [33.045, 91.679, 33.801, 3.053]}, "14": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/rubineta-maisytuvams-30", "b": [33.153, 91.832, 33.801, 3.053]}, "15": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/duso-stovams-ir-sistemoms-30", "b": [33.153, 91.832, 33.801, 3.053]}, "16": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/elektriniams-irankiams-ir-lazeriams-iki-37", "b": [33.153, 91.679, 33.801, 3.053]}, "17": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/rankiniams-irankiams-30", "b": [33.153, 91.832, 33.801, 3.053]}, "18": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/darbo-rubams-ir-avalynei-30", "b": [33.153, 91.832, 33.801, 3.053]}, "19": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/sodo-ir-svaros-prekems-iki-30", "b": [33.045, 91.832, 33.801, 3.053]}, "20": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/dexo-gipso-kartono-profiliams-iki-24", "b": [33.045, 91.832, 33.801, 3.053]}, "21": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/ilgikliams-ir-instaliaciniams-gaminiams-iki-30", "b": [33.153, 91.832, 33.801, 3.053]}, "22": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/automobiliu-prekems-30", "b": [33.153, 91.832, 33.693, 3.13]}, "23": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktiems-sviestuvams-ir-lemputems-iki-50", "b": [33.045, 91.832, 33.801, 3.053]}, "24": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktoms-statybinems-medziagoms-iki-16", "b": [33.045, 91.756, 33.801, 3.053]}};
   var PREFIX = '';
   var stage = document.getElementById('stage');
@@ -187,11 +187,21 @@ body {
     if (m && m.complete && m.naturalWidth) ctx.drawImage(m, x, 0, pw, H);
     else { ctx.fillStyle = '#050505'; ctx.fillRect(x, 0, pw, H); }
   }
+  function smooth(t) { t = t < 0 ? 0 : t > 1 ? 1 : t; return t * t * (3 - 2 * t); }
+  /* eased falloff stops so shading never shows a hard edge */
+  function stops(g, a, k) {
+    g.addColorStop(0, 'rgba(0,0,0,' + a + ')');
+    g.addColorStop(0.35 * k, 'rgba(0,0,0,' + (a * 0.42).toFixed(4) + ')');
+    g.addColorStop(0.7 * k, 'rgba(0,0,0,' + (a * 0.1).toFixed(4) + ')');
+    g.addColorStop(k, 'rgba(0,0,0,0)');
+  }
   function spine(right) {
     if (mode !== 'double') return;
-    var w = pw * 0.07, g;
-    if (right) { g = ctx.createLinearGradient(sx, 0, sx + w, 0); g.addColorStop(0, 'rgba(0,0,0,.55)'); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.fillRect(sx, 0, w, H); }
-    else { g = ctx.createLinearGradient(sx, 0, sx - w, 0); g.addColorStop(0, 'rgba(0,0,0,.55)'); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.fillRect(sx - w, 0, w, H); }
+    var w = pw * SPINE_W, g;
+    g = ctx.createLinearGradient(sx, 0, right ? sx + w : sx - w, 0);
+    stops(g, SPINE_A, 1);
+    ctx.fillStyle = g;
+    ctx.fillRect(right ? sx : sx - w, 0, w, H);
   }
 
   /* draw sheet j turned by angle th (0 = flat on the right, PI = flat on the left) */
@@ -220,12 +230,22 @@ body {
     }
     if (Fp.length < 3) return;
 
-    /* soft shade on the page revealed beside the crease */
-    ctx.save(); path(Fp); ctx.clip();
-    var g = ctx.createLinearGradient(Mx, My, Mx - nx * pw * 0.4, My - ny * pw * 0.4);
-    g.addColorStop(0, 'rgba(0,0,0,.45)'); g.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-    ctx.restore();
+    /* every shade below scales with sin(th), so it is zero at both resting states and the
+       last frame of a turn is identical to the flat page: no pop, no flash */
+    var sn = Math.sin(th);
+    var settle = mode === 'double' ? smooth((th - (PI - 0.8)) / 0.8) : 0;
+
+    /* faint contact shade on the page being revealed */
+    var ca = 0.2 * sn;
+    if (ca > 0.004) {
+      ctx.save(); path(Fp); ctx.clip();
+      var g = ctx.createLinearGradient(Mx, My, Mx - nx * pw * 0.35, My - ny * pw * 0.35);
+      g.addColorStop(0, 'rgba(0,0,0,' + ca.toFixed(4) + ')');
+      g.addColorStop(0.4, 'rgba(0,0,0,' + (ca * 0.35).toFixed(4) + ')');
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    }
 
     /* the folded flap = folded part reflected across the crease */
     var fl = [], D = 0, k, v, f;
@@ -240,10 +260,10 @@ body {
 
     ctx.save();
     ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
-    ctx.shadowColor = 'rgba(0,0,0,.55)';
-    ctx.shadowBlur = 24 * dpr;
-    ctx.shadowOffsetX = OFF + nx * 10 * dpr;
-    ctx.shadowOffsetY = ny * 10 * dpr;
+    ctx.shadowColor = 'rgba(0,0,0,' + (0.34 * sn).toFixed(4) + ')';
+    ctx.shadowBlur = 20 * dpr;
+    ctx.shadowOffsetX = OFF + nx * 6 * dpr;
+    ctx.shadowOffsetY = ny * 6 * dpr;
     ctx.fillStyle = '#000';
     path(cl, -OFF / dpr); ctx.fill();
     ctx.restore();
@@ -256,13 +276,22 @@ body {
     else { ctx.fillStyle = '#17171a'; ctx.fillRect(sx, 0, pw, H); }
     ctx.restore();
 
+    /* back of the sheet: slight shade at the bend only (no highlight), and as the sheet
+       comes to rest it blends into exactly the spine shadow of the flat left page */
     ctx.save(); path(cl); ctx.clip();
-    var g2 = ctx.createLinearGradient(Mx, My, Mx + nx * D, My + ny * D);
-    g2.addColorStop(0, 'rgba(0,0,0,.5)');
-    g2.addColorStop(0.16, 'rgba(0,0,0,.12)');
-    g2.addColorStop(0.5, 'rgba(255,255,255,.05)');
-    g2.addColorStop(1, 'rgba(0,0,0,.16)');
-    ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H);
+    var fa = 0.14 * sn, g2;
+    if (fa > 0.004) {
+      g2 = ctx.createLinearGradient(Mx, My, Mx + nx * D, My + ny * D);
+      g2.addColorStop(0, 'rgba(0,0,0,' + fa.toFixed(4) + ')');
+      g2.addColorStop(Math.min(1, 0.3), 'rgba(0,0,0,' + (fa * 0.3).toFixed(4) + ')');
+      g2.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H);
+    }
+    if (settle > 0.002) {
+      g2 = ctx.createLinearGradient(Mx, My, Mx + nx * D, My + ny * D);
+      stops(g2, SPINE_A * settle, Math.min(1, pw * SPINE_W / D));
+      ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H);
+    }
     ctx.restore();
   }
 
@@ -274,7 +303,7 @@ body {
   function req() { if (!rafId) rafId = requestAnimationFrame(draw); }
 
   /* animation */
-  function ease(p) { return p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2; }
+  function ease(p) { return -(Math.cos(PI * p) - 1) / 2; }
   function easeOut(p) { return 1 - Math.pow(1 - p, 3); }
   function cancelAnim() { if (anim) { anim.dead = true; anim = null; } }
   function animTheta(to, dur, done, full) {
@@ -295,7 +324,7 @@ body {
 
   function setShift(t) {
     var s = 0;
-    if (mode === 'double') s = t === 0 ? -pw / 2 : (t === maxJ ? pw / 2 : 0);
+    if (mode === 'double') s = t === 0 ? -pw / 2 : (t === maxJ && 2 * maxJ + 1 > N ? pw / 2 : 0);
     book.style.transform = 'translateX(' + Math.round(s) + 'px)';
   }
 
@@ -346,7 +375,7 @@ body {
     if (!turn || turn.j !== j) turn = { j: j, theta: rest, rest: rest };
     links.innerHTML = '';
     setShift(target);
-    var dur = 350 + 900 * Math.abs(end - turn.theta) / PI;
+    var dur = 450 + 800 * Math.abs(end - turn.theta) / PI;
     animTheta(end, dur, function () { commit(target); }, true);
   }
 
