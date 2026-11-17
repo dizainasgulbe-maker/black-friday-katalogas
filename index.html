@@ -7,22 +7,19 @@
 <style>
 :root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
 [hidden] { display: none !important; }
-img { max-width: 100%; }
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;600&display=swap">
 <style>
-/* Layout: one full-height stage holding a two-page book (single page on narrow screens), slim control bar below. Committed dark look to match the black-and-gold catalogue. */
+/* Layout: one full-height stage holding a canvas book (two pages, or one on narrow screens) with a paper-curl page turn; slim control bar below. Committed dark look to match the black-and-gold catalogue. */
 :root {
-  --ink: #050505;
   --stage-a: #211f24;
   --stage-b: #0a0a0b;
   --gold: #d6ae5c;
   --gold-dim: #7d6738;
-  --edge: rgba(255, 255, 255, .08);
   --fg: #ece6d8;
   --muted: #9b9482;
   --font-ui: "Red Hat Display", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --flip: 900ms;
+  --shift: 1150ms;
   color-scheme: dark;
 }
 html, body { height: 100%; }
@@ -43,65 +40,23 @@ body {
   min-height: 0;
   display: grid;
   place-items: center;
-  touch-action: pan-y pinch-zoom;
+  touch-action: none;
   user-select: none;
   -webkit-user-select: none;
 }
 .book {
   position: relative;
-  width: var(--bw, 0px);
-  height: var(--bh, 0px);
-  perspective: 2600px;
-  transition: transform var(--flip) cubic-bezier(.4, .1, .2, 1);
+  transition: transform var(--shift) cubic-bezier(.4, .1, .2, 1);
 }
-.book.single { perspective: 2200px; }
-.leaf {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  width: 50%;
-  height: 100%;
-  transform-origin: left center;
-  transform-style: preserve-3d;
-  transition: transform var(--flip) cubic-bezier(.45, .05, .25, 1);
-}
-.leaf.flipped { transform: rotateY(-180deg); }
-.face {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  background: var(--ink);
-  box-shadow: 0 0 0 1px var(--edge);
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
-}
-.face.back { transform: rotateY(180deg); }
-.face.solo { -webkit-backface-visibility: visible; backface-visibility: visible; }
-.face img { display: block; width: 100%; height: 100%; object-fit: cover; pointer-events: none; }
-.face::after { content: ""; position: absolute; inset: 0; pointer-events: none; }
-.face.front::after { background: linear-gradient(to right, rgba(0,0,0,.5), rgba(0,0,0,0) 7%); }
-.face.back::after { background: linear-gradient(to left, rgba(0,0,0,.5), rgba(0,0,0,0) 7%); }
-.face.solo::after { background: none; }
-.spage {
-  position: absolute;
-  inset: 0;
-  transform-origin: left center;
-  transition: transform .8s cubic-bezier(.45, .05, .25, 1), opacity .2s ease 0s;
-}
-.spage.gone {
-  transform: rotateY(-100deg);
-  opacity: 0;
-  transition: transform .8s cubic-bezier(.45, .05, .25, 1), opacity .35s ease .45s;
-}
+.book canvas { display: block; cursor: pointer; }
+.links { position: absolute; inset: 0; pointer-events: none; }
 .hot {
   position: absolute;
-  z-index: 2;
   border-radius: 999px;
-  pointer-events: none;
+  pointer-events: auto;
   cursor: pointer;
   transition: box-shadow .2s ease;
 }
-.face.live .hot { pointer-events: auto; }
 .hot:hover, .hot:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px var(--gold), 0 0 20px rgba(214, 174, 92, .55);
@@ -139,16 +94,16 @@ body {
   .bar { grid-template-columns: 1fr; justify-items: center; }
   .bar .note, .bar .right { display: none; }
 }
-@media (prefers-reduced-motion: reduce) {
-  :root { --flip: 10ms; }
-  .spage, .spage.gone { transition-duration: 10ms; transition-delay: 0s; }
-}
+@media (prefers-reduced-motion: reduce) { :root { --shift: 10ms; } }
 </style>
 
 </head>
 <body>
 <main class="stage" id="stage" aria-label="Juodoji gulbė Black Friday katalogas">
-  <div class="book" id="book"></div>
+  <div class="book" id="book">
+    <canvas id="cv" role="img" aria-label="Katalogo puslapiai. Spauskite arba tempkite puslapio kampą, kad pervertumėte."></canvas>
+    <div class="links" id="links"></div>
+  </div>
 </main>
 <nav class="bar" aria-label="Katalogo puslapiai">
   <div class="note">Black Friday · 2026 m. lapkričio 16–30 d.</div>
@@ -164,153 +119,380 @@ body {
 
 <script>
 (function () {
-  var N = 25, LEAVES = 13, MAXK = 12, RATIO = 1075 / 1521;
+  var N = 25, RATIO = 1075 / 1521, PI = Math.PI, PEEK = 0.3, OFF = 4000, LIFT = 0.6;
   var HOT = {"2": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktoms-plytelems-15", "b": [35.097, 91.756, 33.801, 3.053]}, "3": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktoms-plytelems-15", "b": [33.045, 91.832, 33.801, 3.053]}, "4": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktoms-plytelems-15", "b": [32.073, 91.832, 33.693, 3.053]}, "5": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktoms-plytelems-15", "b": [33.153, 91.756, 33.693, 3.053]}, "6": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/laminuotoms-grindu-ir-sienu-dangoms-iki-23", "b": [33.153, 91.832, 33.801, 3.053]}, "7": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/grindjuostems-ir-ju-kampams-25", "b": [33.153, 91.832, 33.693, 3.053]}, "8": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/profiliams-ir-slenkstukams-20", "b": [34.881, 91.832, 33.801, 3.053]}, "9": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktoms-durims-iki-36", "b": [33.045, 91.832, 33.801, 3.053]}, "10": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktiems-dazams-iki-15", "b": [33.153, 91.832, 33.693, 3.053]}, "11": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/bituminems-mastikoms-fome-flex-30", "b": [33.153, 91.832, 33.801, 3.053]}, "12": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/pakabinamiems-klozetams-iki-39", "b": [32.937, 91.832, 33.693, 3.053]}, "13": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/vonios-baldams-ir-praustuvams-20", "b": [33.045, 91.679, 33.801, 3.053]}, "14": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/rubineta-maisytuvams-30", "b": [33.153, 91.832, 33.801, 3.053]}, "15": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/duso-stovams-ir-sistemoms-30", "b": [33.153, 91.832, 33.801, 3.053]}, "16": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/elektriniams-irankiams-ir-lazeriams-iki-37", "b": [33.153, 91.679, 33.801, 3.053]}, "17": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/rankiniams-irankiams-30", "b": [33.153, 91.832, 33.801, 3.053]}, "18": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/darbo-rubams-ir-avalynei-30", "b": [33.153, 91.832, 33.801, 3.053]}, "19": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/sodo-ir-svaros-prekems-iki-30", "b": [33.045, 91.832, 33.801, 3.053]}, "20": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/dexo-gipso-kartono-profiliams-iki-24", "b": [33.045, 91.832, 33.801, 3.053]}, "21": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/ilgikliams-ir-instaliaciniams-gaminiams-iki-30", "b": [33.153, 91.832, 33.801, 3.053]}, "22": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/automobiliu-prekems-30", "b": [33.153, 91.832, 33.693, 3.13]}, "23": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktiems-sviestuvams-ir-lemputems-iki-50", "b": [33.045, 91.832, 33.801, 3.053]}, "24": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktoms-statybinems-medziagoms-iki-16", "b": [33.045, 91.756, 33.801, 3.053]}};
+  var PREFIX = '';
   var stage = document.getElementById('stage');
   var book = document.getElementById('book');
+  var cv = document.getElementById('cv');
+  var links = document.getElementById('links');
   var prevBtn = document.getElementById('prev');
   var nextBtn = document.getElementById('next');
   var fullBtn = document.getElementById('full');
   var count = document.getElementById('count');
+  var ctx = cv.getContext('2d');
   var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-  var DUR = reduce ? 10 : 900;
-  var mode = null, pg = 1, lockUntil = 0, swipedAt = 0, bw = 0;
-  var leaves = [], spages = [];
 
-  function src(n) { return 'p-' + (n < 10 ? '0' : '') + n + '.jpg'; }
+  var mode = null, cur = 0, maxJ = 12, pw = 0, H = 0, W = 0, sx = 0, dpr = 1;
+  var turn = null, anim = null, dragging = null, swipe = null, hoverZone = null;
+  var introTimer = 0, introDone = false, lastDragAt = 0, rafId = 0;
+  var imgs = [];
 
-  function makeFace(n, cls) {
-    var f = document.createElement('div');
-    f.className = 'face ' + cls;
-    if (n >= 1 && n <= N) {
-      var img = new Image();
-      img.src = src(n);
-      img.alt = 'Katalogo puslapis ' + n;
-      img.draggable = false;
-      f.appendChild(img);
-      var h = HOT[n];
-      if (h) {
-        var a = document.createElement('a');
-        a.className = 'hot';
-        a.href = h.u;
-        a.target = '_blank';
-        a.rel = 'noopener noreferrer';
-        a.title = 'Atraskite daugiau pasiūlymų';
-        a.setAttribute('aria-label', 'Atraskite daugiau pasiūlymų (puslapis ' + n + ')');
-        a.style.left = h.b[0] + '%';
-        a.style.top = h.b[1] + '%';
-        a.style.width = h.b[2] + '%';
-        a.style.height = h.b[3] + '%';
-        f.appendChild(a);
+  function src(n) { return PREFIX + 'p-' + (n < 10 ? '0' : '') + n + '.jpg'; }
+  for (var i = 1; i <= N; i++) {
+    var im = new Image();
+    im.onload = function () { req(); };
+    im.src = src(i);
+    imgs[i] = im;
+  }
+
+  /* page numbers for sheet j: double = leaf j of the book, single = page j+1 */
+  function fr(j) { return mode === 'double' ? 2 * j + 1 : j + 1; }
+  function bk(j) { return mode === 'double' ? 2 * j + 2 : 0; }
+  function ul(j) { return mode === 'double' && j >= 1 ? 2 * j : 0; }
+  function ur(j) { var n = mode === 'double' ? 2 * j + 3 : j + 2; return n <= N ? n : 0; }
+
+  /* geometry helpers */
+  function clipHalf(pts, a, b, c) {
+    var out = [], n = pts.length, k;
+    for (k = 0; k < n; k++) {
+      var cu = pts[k], pr = pts[(k + n - 1) % n];
+      var fc = a * cu.x + b * cu.y + c, fp = a * pr.x + b * pr.y + c;
+      if (fc >= 0) {
+        if (fp < 0) { var t = fp / (fp - fc); out.push({ x: pr.x + (cu.x - pr.x) * t, y: pr.y + (cu.y - pr.y) * t }); }
+        out.push(cu);
+      } else if (fp >= 0) {
+        var t2 = fp / (fp - fc); out.push({ x: pr.x + (cu.x - pr.x) * t2, y: pr.y + (cu.y - pr.y) * t2 });
       }
     }
-    return f;
+    return out;
+  }
+  function clipBook(p) {
+    p = clipHalf(p, 1, 0, 0);
+    if (p.length) p = clipHalf(p, -1, 0, W);
+    if (p.length) p = clipHalf(p, 0, 1, 0);
+    if (p.length) p = clipHalf(p, 0, -1, H);
+    return p;
+  }
+  function path(p, dx) {
+    dx = dx || 0;
+    ctx.beginPath();
+    ctx.moveTo(p[0].x + dx, p[0].y);
+    for (var k = 1; k < p.length; k++) ctx.lineTo(p[k].x + dx, p[k].y);
+    ctx.closePath();
+  }
+  function drawPage(n, x) {
+    if (!n) return;
+    var m = imgs[n];
+    if (m && m.complete && m.naturalWidth) ctx.drawImage(m, x, 0, pw, H);
+    else { ctx.fillStyle = '#050505'; ctx.fillRect(x, 0, pw, H); }
+  }
+  function spine(right) {
+    if (mode !== 'double') return;
+    var w = pw * 0.07, g;
+    if (right) { g = ctx.createLinearGradient(sx, 0, sx + w, 0); g.addColorStop(0, 'rgba(0,0,0,.55)'); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.fillRect(sx, 0, w, H); }
+    else { g = ctx.createLinearGradient(sx, 0, sx - w, 0); g.addColorStop(0, 'rgba(0,0,0,.55)'); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.fillRect(sx - w, 0, w, H); }
   }
 
-  function kOf(p) { return Math.min(MAXK, Math.floor(p / 2)); }
+  /* draw sheet j turned by angle th (0 = flat on the right, PI = flat on the left) */
+  function renderTurn(j, th) {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    var L = ul(j);
+    if (L) { drawPage(L, 0); spine(false); }
+    if (th < 0.0008) { drawPage(fr(j), sx); spine(true); return; }
+    var u = ur(j);
+    if (u) { drawPage(u, sx); spine(true); }
 
-  function build(m) {
-    mode = m;
-    book.innerHTML = '';
-    book.className = 'book' + (m === 'single' ? ' single' : '');
-    leaves = []; spages = [];
-    var i, el;
-    if (m === 'double') {
-      for (i = 0; i < LEAVES; i++) {
-        el = document.createElement('div');
-        el.className = 'leaf';
-        el.appendChild(makeFace(2 * i + 1, 'front'));
-        el.appendChild(makeFace(2 * i + 2, 'back'));
-        book.appendChild(el);
-        leaves.push(el);
-      }
-    } else {
-      for (i = 1; i <= N; i++) {
-        el = document.createElement('div');
-        el.className = 'spage';
-        el.style.zIndex = N - i + 1;
-        el.appendChild(makeFace(i, 'front solo'));
-        book.appendChild(el);
-        spages.push(el);
-      }
+    var Cx = sx + pw, Cy = H;
+    var Px = sx + pw * Math.cos(th), Py = H - LIFT * pw * Math.sin(th);
+    var dx = Px - Cx, dy = Py - Cy, len = Math.sqrt(dx * dx + dy * dy);
+    var nx = dx / len, ny = dy / len;
+    var Mx = (Cx + Px) / 2, My = (Cy + Py) / 2, c0 = nx * Mx + ny * My;
+    var rect = [{ x: sx, y: 0 }, { x: sx + pw, y: 0 }, { x: sx + pw, y: H }, { x: sx, y: H }];
+    var Rp = clipHalf(rect, nx, ny, -c0);
+    var Fp = clipHalf(rect, -nx, -ny, c0);
+
+    if (Rp.length > 2) {
+      ctx.save(); path(Rp); ctx.clip();
+      drawPage(fr(j), sx); spine(true);
+      ctx.restore();
     }
-  }
+    if (Fp.length < 3) return;
 
-  function setLive() {
-    var all = book.querySelectorAll('.face.live'), i;
-    for (i = 0; i < all.length; i++) all[i].classList.remove('live');
-    if (mode === 'double') {
-      var k = kOf(pg);
-      if (k > 0) leaves[k - 1].children[1].classList.add('live');
-      if (k < LEAVES) leaves[k].children[0].classList.add('live');
-    } else {
-      spages[pg - 1].children[0].classList.add('live');
+    /* soft shade on the page revealed beside the crease */
+    ctx.save(); path(Fp); ctx.clip();
+    var g = ctx.createLinearGradient(Mx, My, Mx - nx * pw * 0.4, My - ny * pw * 0.4);
+    g.addColorStop(0, 'rgba(0,0,0,.45)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+
+    /* the folded flap = folded part reflected across the crease */
+    var fl = [], D = 0, k, v, f;
+    for (k = 0; k < Fp.length; k++) {
+      v = Fp[k]; f = nx * v.x + ny * v.y - c0;
+      fl.push({ x: v.x - 2 * f * nx, y: v.y - 2 * f * ny });
+      if (-f > D) D = -f;
     }
+    var cl = clipBook(fl);
+    if (cl.length < 3) return;
+    if (D < 1) D = 1;
+
+    ctx.save();
+    ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
+    ctx.shadowColor = 'rgba(0,0,0,.55)';
+    ctx.shadowBlur = 24 * dpr;
+    ctx.shadowOffsetX = OFF + nx * 10 * dpr;
+    ctx.shadowOffsetY = ny * 10 * dpr;
+    ctx.fillStyle = '#000';
+    path(cl, -OFF / dpr); ctx.fill();
+    ctx.restore();
+
+    var h11 = 1 - 2 * nx * nx, h12 = -2 * nx * ny, h22 = 1 - 2 * ny * ny, K = 2 * sx + pw;
+    ctx.save(); path(cl); ctx.clip();
+    ctx.transform(-h11, -h12, h12, h22, K * h11 + 2 * c0 * nx, K * h12 + 2 * c0 * ny);
+    var b = bk(j);
+    if (b) drawPage(b, sx);
+    else { ctx.fillStyle = '#17171a'; ctx.fillRect(sx, 0, pw, H); }
+    ctx.restore();
+
+    ctx.save(); path(cl); ctx.clip();
+    var g2 = ctx.createLinearGradient(Mx, My, Mx + nx * D, My + ny * D);
+    g2.addColorStop(0, 'rgba(0,0,0,.5)');
+    g2.addColorStop(0.16, 'rgba(0,0,0,.12)');
+    g2.addColorStop(0.5, 'rgba(255,255,255,.05)');
+    g2.addColorStop(1, 'rgba(0,0,0,.16)');
+    ctx.fillStyle = g2; ctx.fillRect(0, 0, W, H);
+    ctx.restore();
   }
 
-  function flipLeaf(i, flip, delay) {
-    var el = leaves[i];
-    el.style.zIndex = 200 + i;
-    el.style.transitionDelay = delay + 'ms';
-    el.classList.toggle('flipped', flip);
-    clearTimeout(el._t);
-    el._t = setTimeout(function () {
-      el.style.transitionDelay = '';
-      el.style.zIndex = flip ? i + 1 : LEAVES - i;
-    }, delay + DUR + 80);
+  function draw() {
+    rafId = 0;
+    if (!pw) return;
+    if (turn) renderTurn(turn.j, turn.theta); else renderTurn(cur, 0);
+  }
+  function req() { if (!rafId) rafId = requestAnimationFrame(draw); }
+
+  /* animation */
+  function ease(p) { return p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2; }
+  function easeOut(p) { return 1 - Math.pow(1 - p, 3); }
+  function cancelAnim() { if (anim) { anim.dead = true; anim = null; } }
+  function animTheta(to, dur, done, full) {
+    cancelAnim();
+    if (reduce) dur = 1;
+    var from = turn.theta, t0 = performance.now(), a = { full: !!full, dead: false };
+    anim = a;
+    (function tick(now) {
+      if (a.dead) return;
+      var p = Math.min(1, (now - t0) / dur);
+      turn.theta = from + (to - from) * (full ? ease(p) : easeOut(p));
+      draw();
+      if (p < 1) requestAnimationFrame(tick);
+      else { anim = null; if (done) done(); }
+    })(t0);
+  }
+  function isBusy() { return !!(dragging || (anim && anim.full)); }
+
+  function setShift(t) {
+    var s = 0;
+    if (mode === 'double') s = t === 0 ? -pw / 2 : (t === maxJ ? pw / 2 : 0);
+    book.style.transform = 'translateX(' + Math.round(s) + 'px)';
   }
 
-  function apply(oldPg, animate) {
-    var i;
-    if (mode === 'double') {
-      var k = kOf(pg), ok = kOf(oldPg);
-      if (!animate) {
-        for (i = 0; i < LEAVES; i++) {
-          leaves[i].classList.toggle('flipped', i < k);
-          leaves[i].style.zIndex = i < k ? i + 1 : LEAVES - i;
-        }
-      } else if (k > ok) {
-        for (i = ok; i < k; i++) flipLeaf(i, true, (i - ok) * 110);
-      } else if (k < ok) {
-        for (i = ok - 1; i >= k; i--) flipLeaf(i, false, (ok - 1 - i) * 110);
-      }
-      var shift = k === 0 ? -bw / 4 : (k === MAXK ? bw / 4 : 0);
-      book.style.transform = 'translateX(' + Math.round(shift) + 'px)';
-      prevBtn.disabled = k === 0;
-      nextBtn.disabled = k === MAXK;
-      count.textContent = (k === 0 ? '1' : (2 * k) + '–' + (2 * k + 1)) + ' / ' + N;
-    } else {
-      book.style.transform = '';
-      for (i = 0; i < N; i++) spages[i].classList.toggle('gone', i + 1 < pg);
-      prevBtn.disabled = pg === 1;
-      nextBtn.disabled = pg === N;
-      count.textContent = pg + ' / ' + N;
-    }
-    setLive();
+  function buildLinks() {
+    links.innerHTML = '';
+    if (isBusy() || !pw) return;
+    var list = mode === 'double' ? [[cur > 0 ? 2 * cur : 0, 'L'], [2 * cur + 1, 'R']] : [[cur + 1, 'S']];
+    list.forEach(function (pr) {
+      var n = pr[0], side = pr[1], h = n && HOT[n];
+      if (!h) return;
+      var l = h.b[0], w = h.b[2];
+      if (side === 'L') { l = l / 2; w = w / 2; }
+      else if (side === 'R') { l = 50 + l / 2; w = w / 2; }
+      var a = document.createElement('a');
+      a.className = 'hot';
+      a.href = h.u;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.title = 'Atraskite daugiau pasiūlymų';
+      a.setAttribute('aria-label', 'Atraskite daugiau pasiūlymų (puslapis ' + n + ')');
+      a.style.left = l + '%'; a.style.top = h.b[1] + '%';
+      a.style.width = w + '%'; a.style.height = h.b[3] + '%';
+      links.appendChild(a);
+    });
   }
 
-  function go(p, animate) {
-    p = Math.max(1, Math.min(N, p));
-    if (p === pg) return;
-    var old = pg;
-    pg = p;
-    apply(old, animate !== false);
+  function ui() {
+    prevBtn.disabled = cur === 0;
+    nextBtn.disabled = cur === maxJ;
+    count.textContent = (mode === 'double' ? (cur === 0 ? '1' : (2 * cur) + '–' + (2 * cur + 1)) : String(cur + 1)) + ' / ' + N;
+    buildLinks();
+  }
+
+  function stopIntro() { clearTimeout(introTimer); introTimer = 0; }
+
+  function commit(target) {
+    cur = target; turn = null; hoverZone = null;
+    stage.style.cursor = '';
+    draw(); ui();
   }
 
   function step(dir) {
-    var now = Date.now();
-    if (now < lockUntil) return;
-    var target;
-    if (mode === 'double') {
-      var k = kOf(pg) + dir;
-      if (k < 0 || k > MAXK) return;
-      target = k === 0 ? 1 : 2 * k;
+    if (isBusy()) return;
+    var target = cur + dir;
+    if (target < 0 || target > maxJ) return;
+    stopIntro();
+    var j = dir > 0 ? cur : cur - 1, rest = dir > 0 ? 0 : PI, end = dir > 0 ? PI : 0;
+    if (!turn || turn.j !== j) turn = { j: j, theta: rest, rest: rest };
+    links.innerHTML = '';
+    setShift(target);
+    var dur = 350 + 900 * Math.abs(end - turn.theta) / PI;
+    animTheta(end, dur, function () { commit(target); }, true);
+  }
+
+  function jump(target) {
+    stopIntro(); cancelAnim(); dragging = null; turn = null;
+    cur = Math.max(0, Math.min(maxJ, target));
+    setShift(cur); draw(); ui();
+  }
+
+  function startPeek(z) {
+    if (isBusy()) return;
+    var j = z === 'R' ? cur : cur - 1, rest = z === 'R' ? 0 : PI;
+    if (!turn || turn.j !== j) turn = { j: j, theta: rest, rest: rest };
+    animTheta(rest === 0 ? PEEK : PI - PEEK, 420, null, false);
+  }
+  function endPeek() {
+    if (isBusy() || !turn) return;
+    animTheta(turn.rest, 360, function () { turn = null; draw(); }, false);
+  }
+
+  /* pointer helpers */
+  function bookPos(e) { var r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+  function zoneAt(p) {
+    var wz = pw * 0.24, hz = H * 0.2;
+    if (p.y < H - hz || p.y > H + 12) return null;
+    if (cur < maxJ && p.x >= sx + pw - wz && p.x <= sx + pw + 8) return 'R';
+    if (mode === 'double' && cur > 0 && p.x <= wz && p.x >= -8) return 'L';
+    return null;
+  }
+  function angleAt(p) {
+    var a = Math.acos(Math.max(-1, Math.min(1, (p.x - sx) / pw)));
+    return Math.max(0.001, Math.min(PI - 0.001, a));
+  }
+
+  stage.addEventListener('pointerdown', function (e) {
+    if (e.button && e.button !== 0) return;
+    stopIntro();
+    if (e.target.closest && e.target.closest('a')) return;
+    var p = bookPos(e), z = (anim && anim.full) ? null : zoneAt(p);
+    if (z) {
+      cancelAnim();
+      var j = z === 'R' ? cur : cur - 1, rest = z === 'R' ? 0 : PI;
+      if (!turn || turn.j !== j) turn = { j: j, theta: rest, rest: rest };
+      dragging = { z: z, x: e.clientX, y: e.clientY, moved: false };
+      links.innerHTML = '';
+      stage.style.cursor = 'grabbing';
+      try { stage.setPointerCapture(e.pointerId); } catch (err) {}
+      e.preventDefault();
     } else {
-      target = pg + dir;
-      if (target < 1 || target > N) return;
+      swipe = { x: e.clientX, y: e.clientY };
     }
-    lockUntil = now + 450;
-    go(target, true);
+  });
+
+  stage.addEventListener('pointermove', function (e) {
+    var p = bookPos(e);
+    if (dragging) {
+      if (Math.abs(e.clientX - dragging.x) + Math.abs(e.clientY - dragging.y) > 6) {
+        if (!dragging.moved) setShift(dragging.z === 'R' ? cur + 1 : cur - 1);
+        dragging.moved = true;
+      }
+      if (dragging.moved) { turn.theta = angleAt(p); draw(); }
+      return;
+    }
+    if (e.pointerType !== 'mouse' || (anim && anim.full)) return;
+    var z = zoneAt(p);
+    if (z !== hoverZone) {
+      hoverZone = z;
+      stopIntro();
+      stage.style.cursor = z ? 'grab' : '';
+      if (z) startPeek(z); else endPeek();
+    }
+  });
+
+  function finishDrag(cancelled) {
+    var d = dragging;
+    if (!d) return;
+    dragging = null;
+    stage.style.cursor = '';
+    lastDragAt = Date.now();
+    if (!d.moved) {
+      turn = null; draw();
+      if (!cancelled) step(d.z === 'R' ? 1 : -1);
+      return;
+    }
+    var fwd = d.z === 'R', th = turn.theta;
+    var complete = fwd ? th > 1.1 : th < PI - 1.1;
+    var target = complete ? (fwd ? cur + 1 : cur - 1) : cur;
+    var end = complete ? (fwd ? PI : 0) : turn.rest;
+    setShift(target);
+    var dur = 250 + 650 * Math.abs(end - th) / PI;
+    animTheta(end, dur, function () { if (complete) commit(target); else { turn = null; hoverZone = null; draw(); ui(); } }, true);
+  }
+  stage.addEventListener('pointerup', function (e) {
+    if (dragging) { finishDrag(false); return; }
+    if (swipe) {
+      var dx = e.clientX - swipe.x, dy = e.clientY - swipe.y;
+      swipe = null;
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) { lastDragAt = Date.now(); step(dx < 0 ? 1 : -1); }
+    }
+  });
+  stage.addEventListener('pointercancel', function () { swipe = null; finishDrag(true); });
+  stage.addEventListener('pointerleave', function () {
+    if (hoverZone && !dragging) { hoverZone = null; stage.style.cursor = ''; endPeek(); }
+  });
+
+  stage.addEventListener('click', function (e) {
+    if (e.target.closest && e.target.closest('a')) return;
+    if (Date.now() - lastDragAt < 400) return;
+    var r = cv.getBoundingClientRect();
+    if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
+    if (mode === 'double') step(e.clientX < r.left + r.width / 2 ? -1 : 1);
+    else step(e.clientX < r.left + r.width * 0.3 ? -1 : 1);
+  });
+
+  prevBtn.addEventListener('click', function () { step(-1); });
+  nextBtn.addEventListener('click', function () { step(1); });
+  document.addEventListener('keydown', function (e) {
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); step(1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); step(-1); }
+    else if (e.key === 'Home') { e.preventDefault(); jump(0); }
+    else if (e.key === 'End') { e.preventDefault(); jump(maxJ); }
+  });
+
+  if (document.fullscreenEnabled) {
+    fullBtn.hidden = false;
+    fullBtn.addEventListener('click', function () {
+      try {
+        var pr = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+        if (pr && pr.catch) pr.catch(function () {});
+      } catch (err) {}
+    });
+  }
+
+  /* opening peek: the cover corner lifts once, then settles */
+  function intro() {
+    introTimer = 0;
+    if (introDone || reduce || mode !== 'double' || cur !== 0 || turn || isBusy()) return;
+    introDone = true;
+    turn = { j: 0, theta: 0, rest: 0 };
+    animTheta(0.62, 800, function () {
+      introTimer = setTimeout(function () {
+        introTimer = 0;
+        if (turn && turn.j === 0 && !isBusy() && !hoverZone) animTheta(0, 650, function () { turn = null; draw(); }, false);
+      }, 450);
+    }, false);
   }
 
   function layout() {
@@ -318,72 +500,29 @@ body {
     var aw = Math.max(0, r.width - 8), ah = Math.max(0, r.height - 8);
     if (aw < 50 || ah < 50) return;
     var m = aw / ah < 1.2 ? 'single' : 'double';
-    var pw, ph;
-    if (m === 'single') { pw = Math.min(aw, ah * RATIO); }
-    else { pw = Math.min(aw / 2, ah * RATIO); }
-    pw = Math.floor(pw); ph = Math.floor(pw / RATIO);
-    bw = m === 'single' ? pw : pw * 2;
-    book.style.setProperty('--bw', bw + 'px');
-    book.style.setProperty('--bh', ph + 'px');
+    var p = m === 'single' ? Math.min(aw, ah * RATIO) : Math.min(aw / 2, ah * RATIO);
+    pw = Math.floor(p); H = Math.floor(pw / RATIO);
+    W = m === 'single' ? pw : pw * 2;
+    sx = m === 'single' ? 0 : pw;
+    dpr = Math.min(2, window.devicePixelRatio || 1);
     if (m !== mode) {
-      var keep = pg;
-      build(m);
-      pg = 0;
-      pg = keep;
-      apply(keep, false);
-    } else if (mode === 'double') {
-      var k = kOf(pg);
-      var shift = k === 0 ? -bw / 4 : (k === MAXK ? bw / 4 : 0);
-      book.style.transform = 'translateX(' + Math.round(shift) + 'px)';
+      var pageNo = mode === null ? 1 : (mode === 'double' ? Math.min(N, 2 * cur + 1) : cur + 1);
+      cancelAnim(); turn = null; dragging = null; hoverZone = null;
+      mode = m;
+      maxJ = m === 'double' ? 12 : N - 1;
+      cur = m === 'double' ? Math.min(12, Math.floor(pageNo / 2)) : pageNo - 1;
     }
-  }
-
-  prevBtn.addEventListener('click', function () { step(-1); });
-  nextBtn.addEventListener('click', function () { step(1); });
-
-  document.addEventListener('keydown', function (e) {
-    if (e.altKey || e.ctrlKey || e.metaKey) return;
-    if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); step(1); }
-    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); step(-1); }
-    else if (e.key === 'Home') { e.preventDefault(); lockUntil = 0; go(1, true); }
-    else if (e.key === 'End') { e.preventDefault(); lockUntil = 0; go(N, true); }
-  });
-
-  stage.addEventListener('click', function (e) {
-    if (e.target.closest && e.target.closest('a')) return;
-    if (Date.now() - swipedAt < 350) return;
-    var r = book.getBoundingClientRect();
-    if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
-    if (mode === 'double') {
-      var k = kOf(pg);
-      if (k === 0) { step(1); return; }
-      step(e.clientX < r.left + r.width / 2 ? -1 : 1);
-    } else {
-      step(e.clientX < r.left + r.width * 0.3 ? -1 : 1);
-    }
-  });
-
-  var sx = 0, sy = 0, down = false;
-  stage.addEventListener('pointerdown', function (e) { down = true; sx = e.clientX; sy = e.clientY; });
-  stage.addEventListener('pointerup', function (e) {
-    if (!down) return;
-    down = false;
-    var dx = e.clientX - sx, dy = e.clientY - sy;
-    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-      swipedAt = Date.now();
-      step(dx < 0 ? 1 : -1);
-    }
-  });
-  stage.addEventListener('pointercancel', function () { down = false; });
-
-  if (document.fullscreenEnabled) {
-    fullBtn.hidden = false;
-    fullBtn.addEventListener('click', function () {
-      try {
-        var p = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
-        if (p && p.catch) p.catch(function () {});
-      } catch (err) {}
-    });
+    book.style.width = W + 'px';
+    book.style.height = H + 'px';
+    cv.width = Math.round(W * dpr);
+    cv.height = Math.round(H * dpr);
+    cv.style.width = W + 'px';
+    cv.style.height = H + 'px';
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    setShift(turn ? (turn.theta > PI / 2 ? turn.j + 1 : turn.j) : cur);
+    draw(); ui();
+    if (!introDone && !introTimer && mode === 'double') introTimer = setTimeout(intro, 1100);
   }
 
   var pending = false;
