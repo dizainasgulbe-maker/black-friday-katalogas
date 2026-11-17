@@ -2,16 +2,12 @@
 <html lang="lt">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Juodoji gulbė Black Friday</title>
-<style>
-:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
-[hidden] { display: none !important; }
-</style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;600&display=swap">
 <style>
-/* Layout: one full-height stage holding a canvas book (two pages, or one on narrow screens) with a paper-curl page turn; slim control bar below. Committed dark look to match the black-and-gold catalogue. */
-:root {
+/* Everything is scoped to .gfb / .gfb-* so nothing here can touch the host website
+   (no html, body, :root, [hidden], nav, main or generic class rules). */
+.gfb {
   --stage-a: #211f24;
   --stage-b: #0a0a0b;
   --gold: #d6ae5c;
@@ -21,12 +17,14 @@
   --font-ui: "Red Hat Display", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --shift: 1150ms;
   color-scheme: dark;
-}
-html, body { height: 100%; }
-body {
-  margin: 0;
+  position: relative;
+  isolation: isolate;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  height: var(--gfb-height, 100vh);
+  min-height: 320px;
+  margin: 0;
   overflow: hidden;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
@@ -34,8 +32,21 @@ body {
   background-image: radial-gradient(ellipse at 50% 42%, var(--stage-a), var(--stage-b) 72%);
   color: var(--fg);
   font: 400 14px/1.4 var(--font-ui);
+  text-align: left;
+  letter-spacing: normal;
+  text-transform: none;
 }
-.stage {
+@supports (height: 100dvh) { .gfb { height: var(--gfb-height, 100dvh); } }
+.gfb:focus { outline: none; }
+.gfb:fullscreen { height: 100%; width: 100%; }
+.gfb [hidden] { display: none !important; }
+
+/* only when this file is opened on its own (GitHub page), never when embedded */
+.gfb-standalone, .gfb-standalone body { margin: 0; height: 100%; background: #0a0a0b; }
+.gfb-standalone body { overflow: hidden; }
+.gfb-standalone .gfb { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+.gfb-stage {
   flex: 1 1 0;
   min-height: 0;
   display: grid;
@@ -44,24 +55,24 @@ body {
   user-select: none;
   -webkit-user-select: none;
 }
-.book {
+.gfb-book {
   position: relative;
   transition: transform var(--shift) cubic-bezier(.4, .1, .2, 1);
 }
-.book canvas { display: block; cursor: pointer; }
-.links { position: absolute; inset: 0; pointer-events: none; }
-.hot {
+.gfb-book canvas { display: block; cursor: pointer; }
+.gfb-links { position: absolute; inset: 0; pointer-events: none; }
+.gfb-hot {
   position: absolute;
   border-radius: 999px;
   pointer-events: auto;
   cursor: pointer;
   transition: box-shadow .2s ease;
 }
-.hot:hover, .hot:focus-visible {
+.gfb-hot:hover, .gfb-hot:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px var(--gold), 0 0 20px rgba(214, 174, 92, .55);
 }
-.bar {
+.gfb-bar {
   flex: none;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
@@ -69,16 +80,17 @@ body {
   gap: 12px;
   padding-block: 8px 12px;
 }
-.bar .note { color: var(--muted); font-size: 13px; letter-spacing: .02em; min-width: 0; }
-.bar .controls { display: flex; align-items: center; gap: 14px; }
-.bar .right { display: flex; justify-content: flex-end; }
-.count { min-width: 6.5em; text-align: center; font-variant-numeric: tabular-nums; letter-spacing: .04em; color: var(--fg); }
-.btn {
+.gfb-note { color: var(--muted); font-size: 13px; letter-spacing: .02em; min-width: 0; }
+.gfb-controls { display: flex; align-items: center; gap: 14px; }
+.gfb-right { display: flex; justify-content: flex-end; }
+.gfb-count { min-width: 6.5em; text-align: center; font-variant-numeric: tabular-nums; letter-spacing: .04em; color: var(--fg); }
+.gfb-btn {
   width: 44px;
   height: 44px;
   display: grid;
   place-items: center;
   padding: 0;
+  margin: 0;
   border-radius: 50%;
   border: 1px solid var(--gold-dim);
   background: rgba(255, 255, 255, .03);
@@ -86,51 +98,67 @@ body {
   cursor: pointer;
   transition: background-color .15s ease, border-color .15s ease, opacity .15s ease;
 }
-.btn:hover:not(:disabled) { background: rgba(214, 174, 92, .14); border-color: var(--gold); }
-.btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
-.btn:disabled { opacity: .3; cursor: default; }
-.btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.gfb-btn:hover:not(:disabled) { background: rgba(214, 174, 92, .14); border-color: var(--gold); }
+.gfb-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.gfb-btn:disabled { opacity: .3; cursor: default; }
+.gfb-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 @media (max-width: 640px) {
-  .bar { grid-template-columns: 1fr; justify-items: center; }
-  .bar .note, .bar .right { display: none; }
+  .gfb-bar { grid-template-columns: 1fr; justify-items: center; }
+  .gfb-note, .gfb-right { display: none; }
 }
-@media (prefers-reduced-motion: reduce) { :root { --shift: 10ms; } }
+@media (prefers-reduced-motion: reduce) { .gfb { --shift: 10ms; } }
 </style>
-
 </head>
 <body>
-<main class="stage" id="stage" aria-label="Juodoji gulbė Black Friday katalogas">
-  <div class="book" id="book">
-    <canvas id="cv" role="img" aria-label="Katalogo puslapiai. Spauskite arba tempkite puslapio kampą, kad pervertumėte."></canvas>
-    <div class="links" id="links"></div>
+<div class="gfb" id="gfb-root" tabindex="-1">
+  <div class="gfb-stage" id="gfb-stage" role="region" aria-label="Juodoji gulbė Black Friday katalogas">
+    <div class="gfb-book" id="gfb-book">
+      <canvas id="gfb-cv" role="img" aria-label="Katalogo puslapiai. Spauskite arba tempkite puslapio kampą, kad pervertumėte."></canvas>
+      <div class="gfb-links" id="gfb-links"></div>
+    </div>
   </div>
-</main>
-<nav class="bar" aria-label="Katalogo puslapiai">
-  <div class="note">Black Friday · 2026 m. lapkričio 16–30 d.</div>
-  <div class="controls">
-    <button class="btn" id="prev" type="button" aria-label="Ankstesnis puslapis"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
-    <div class="count" id="count" aria-live="polite">1 / 25</div>
-    <button class="btn" id="next" type="button" aria-label="Kitas puslapis"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+  <div class="gfb-bar" role="group" aria-label="Katalogo puslapiai">
+    <div class="gfb-note">Black Friday · 2026 m. lapkričio 16–30 d.</div>
+    <div class="gfb-controls">
+      <button class="gfb-btn" id="gfb-prev" type="button" aria-label="Ankstesnis puslapis"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <div class="gfb-count" id="gfb-count" aria-live="polite">1 / 25</div>
+      <button class="gfb-btn" id="gfb-next" type="button" aria-label="Kitas puslapis"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+    <div class="gfb-right">
+      <button class="gfb-btn" id="gfb-full" type="button" aria-label="Visas ekranas" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    </div>
   </div>
-  <div class="right">
-    <button class="btn" id="full" type="button" aria-label="Visas ekranas" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
-  </div>
-</nav>
+</div>
 
 <script>
 (function () {
   var N = 25, RATIO = 1075 / 1521, PI = Math.PI, PEEK = 0.3, OFF = 4000, LIFT = 0.6, SPINE_A = 0.4, SPINE_W = 0.065;
   var HOT = {"2": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktoms-plytelems-15", "b": [35.097, 91.756, 33.801, 3.053]}, "3": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktoms-plytelems-15", "b": [33.045, 91.832, 33.801, 3.053]}, "4": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktoms-plytelems-15", "b": [32.073, 91.832, 33.693, 3.053]}, "5": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktoms-plytelems-15", "b": [33.153, 91.756, 33.693, 3.053]}, "6": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/laminuotoms-grindu-ir-sienu-dangoms-iki-23", "b": [33.153, 91.832, 33.801, 3.053]}, "7": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/grindjuostems-ir-ju-kampams-25", "b": [33.153, 91.832, 33.693, 3.053]}, "8": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/profiliams-ir-slenkstukams-20", "b": [34.881, 91.832, 33.801, 3.053]}, "9": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktoms-durims-iki-36", "b": [33.045, 91.832, 33.801, 3.053]}, "10": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktiems-dazams-iki-15", "b": [33.153, 91.832, 33.693, 3.053]}, "11": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/bituminems-mastikoms-fome-flex-30", "b": [33.153, 91.832, 33.801, 3.053]}, "12": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/pakabinamiems-klozetams-iki-39", "b": [32.937, 91.832, 33.693, 3.053]}, "13": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/vonios-baldams-ir-praustuvams-20", "b": [33.045, 91.679, 33.801, 3.053]}, "14": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/rubineta-maisytuvams-30", "b": [33.153, 91.832, 33.801, 3.053]}, "15": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/duso-stovams-ir-sistemoms-30", "b": [33.153, 91.832, 33.801, 3.053]}, "16": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/elektriniams-irankiams-ir-lazeriams-iki-37", "b": [33.153, 91.679, 33.801, 3.053]}, "17": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/rankiniams-irankiams-30", "b": [33.153, 91.832, 33.801, 3.053]}, "18": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/darbo-rubams-ir-avalynei-30", "b": [33.153, 91.832, 33.801, 3.053]}, "19": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/sodo-ir-svaros-prekems-iki-30", "b": [33.045, 91.832, 33.801, 3.053]}, "20": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/dexo-gipso-kartono-profiliams-iki-24", "b": [33.045, 91.832, 33.801, 3.053]}, "21": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/ilgikliams-ir-instaliaciniams-gaminiams-iki-30", "b": [33.153, 91.832, 33.801, 3.053]}, "22": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/automobiliu-prekems-30", "b": [33.153, 91.832, 33.693, 3.13]}, "23": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktiems-sviestuvams-ir-lemputems-iki-50", "b": [33.045, 91.832, 33.801, 3.053]}, "24": {"u": "https://www.gulbe.lt/prekiu-katalogas/pasiulymai/juodoji-gulbe-black-friday/atrinktoms-statybinems-medziagoms-iki-16", "b": [33.045, 91.756, 33.801, 3.053]}};
   var PREFIX = '';
-  var stage = document.getElementById('stage');
-  var book = document.getElementById('book');
-  var cv = document.getElementById('cv');
-  var links = document.getElementById('links');
-  var prevBtn = document.getElementById('prev');
-  var nextBtn = document.getElementById('next');
-  var fullBtn = document.getElementById('full');
-  var count = document.getElementById('count');
+  var root = document.getElementById('gfb-root');
+  var stage = document.getElementById('gfb-stage');
+  var book = document.getElementById('gfb-book');
+  var cv = document.getElementById('gfb-cv');
+  var links = document.getElementById('gfb-links');
+  var prevBtn = document.getElementById('gfb-prev');
+  var nextBtn = document.getElementById('gfb-next');
+  var fullBtn = document.getElementById('gfb-full');
+  var count = document.getElementById('gfb-count');
   var ctx = cv.getContext('2d');
+
+  /* opened on its own (e.g. the GitHub page) vs. embedded in another website */
+  var alone = root.parentNode === document.body && !Array.prototype.some.call(document.body.children, function (el) {
+    return el !== root && !/^(SCRIPT|STYLE|LINK|NOSCRIPT)$/.test(el.tagName);
+  });
+  if (alone) {
+    document.documentElement.classList.add('gfb-standalone');
+    if (!document.querySelector('meta[name="viewport"]')) {
+      var mv = document.createElement('meta');
+      mv.name = 'viewport'; mv.content = 'width=device-width, initial-scale=1, viewport-fit=cover';
+      document.head.appendChild(mv);
+    }
+    try { root.focus({ preventScroll: true }); } catch (err) {}
+  }
   var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   var mode = null, cur = 0, maxJ = 12, pw = 0, H = 0, W = 0, sx = 0, dpr = 1;
@@ -339,7 +367,7 @@ body {
       if (side === 'L') { l = l / 2; w = w / 2; }
       else if (side === 'R') { l = 50 + l / 2; w = w / 2; }
       var a = document.createElement('a');
-      a.className = 'hot';
+      a.className = 'gfb-hot';
       a.href = h.u;
       a.target = '_blank';
       a.rel = 'noopener noreferrer';
@@ -412,6 +440,7 @@ body {
 
   stage.addEventListener('pointerdown', function (e) {
     if (e.button && e.button !== 0) return;
+    try { root.focus({ preventScroll: true }); } catch (err) {}
     stopIntro();
     if (e.target.closest && e.target.closest('a')) return;
     var p = bookPos(e), z = (anim && anim.full) ? null : zoneAt(p);
@@ -492,7 +521,8 @@ body {
 
   prevBtn.addEventListener('click', function () { step(-1); });
   nextBtn.addEventListener('click', function () { step(1); });
-  document.addEventListener('keydown', function (e) {
+  /* keys only act while the flipbook has focus, so the host page's own keys are never hijacked */
+  root.addEventListener('keydown', function (e) {
     if (e.altKey || e.ctrlKey || e.metaKey) return;
     if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); step(1); }
     else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); step(-1); }
@@ -504,7 +534,7 @@ body {
     fullBtn.hidden = false;
     fullBtn.addEventListener('click', function () {
       try {
-        var pr = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+        var pr = document.fullscreenElement ? document.exitFullscreen() : root.requestFullscreen();
         if (pr && pr.catch) pr.catch(function () {});
       } catch (err) {}
     });
